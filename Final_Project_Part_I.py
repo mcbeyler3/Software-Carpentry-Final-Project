@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
+from calendar_sync import get_busy_blocks_from_ics
 
 
 # ---------- Data model ----------
@@ -23,16 +24,21 @@ Block = Tuple[datetime, datetime, str]
 
 
 # ---------- Core scheduler ----------
-
-def build_schedule(
-    tasks: List[Task],
-    start_time: datetime,
-    total_minutes: int,
-    work_block_max: int = 50,
-    break_minutes: int = 10,
-) -> List[Block]:
+def is_free_time(start, end, busy_blocks):
     """
-    Make a schedule for one continuous study window.
+    Returns True if the time block does NOT conflict with any busy calendar event.
+    """
+    for b_start, b_end in busy_blocks:
+        if start < b_end and end > b_start:
+            return False
+    return True
+
+def build_schedule(tasks, start_time, total_minutes, work_block_max=50, break_minutes=10, busy_blocks=None):
+    if busy_blocks is None:
+        busy_blocks = []
+
+    """
+    Make a schedule for one continuous study window that does not conflict with calendar events.
     """
     if total_minutes <= 0 or not tasks:
         return []
@@ -61,9 +67,21 @@ def build_schedule(
             block_len = int(min(work_block_max, remaining_for_task, rem_window))
             if block_len <= 0:
                 return schedule
-
             work_start = current_time
             work_end = current_time + timedelta(minutes=block_len)
+
+            if is_free_time(work_start, work_end, busy_blocks):
+                schedule.append((work_start, work_end, task.name))
+                remaining_for_task -= block_len
+                current_time = work_end
+            else:
+    # Skip to end of next busy block
+                conflict = next((b_end for b_start, b_end in busy_blocks if b_start <= current_time < b_end), None)
+                if conflict:
+                    current_time = conflict
+                else:
+                    current_time += timedelta(minutes=5)  # try again in 5 minutes
+
             schedule.append((work_start, work_end, task.name))
 
             remaining_for_task -= block_len
