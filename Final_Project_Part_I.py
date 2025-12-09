@@ -145,6 +145,14 @@ def run_example_scenario() -> None:
     print("=== Built-in example: 18:00–21:00 ===")
     print_schedule(tonight_schedule)
 
+ics_path = input("Enter the path to your .ics calendar file (or leave blank to skip): ").strip()
+busy_blocks = []
+if ics_path:
+    try:
+        busy_blocks = get_busy_blocks_from_ics(ics_path)
+        print(f"Loaded {len(busy_blocks)} busy time blocks from calendar.")
+    except Exception as e:
+        print("Couldn't read calendar file:", e)
 
 # ---------- Interactive scenario ----------
 
@@ -220,14 +228,15 @@ def run_interactive_scenario() -> None:
     except ValueError:
         break_minutes = 10
         print("Invalid break length, using 10.")
-
     schedule = build_schedule(
         tasks=tasks,
         start_time=study_start,
         total_minutes=total_minutes,
         work_block_max=work_block_max,
         break_minutes=break_minutes,
+        busy_blocks=busy_blocks,
     )
+
 
     print("\n=== Custom schedule ===")
     print_schedule(schedule)
