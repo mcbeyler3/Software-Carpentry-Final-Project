@@ -306,3 +306,95 @@ if __name__ == "__main__":
         real_sessions = load_sessions()
         if real_sessions:
             run_analytics_dashboard(real_sessions, mode_label="REAL DATA")
+# analytics.py
+
+import tkinter as tk
+from tkinter import messagebox
+
+
+CSV_PATH = "sessions.csv"
+
+#  GUI launcher for the analytics dashboard
+
+def run_analytics_gui(show_main_menu=None):
+    """
+    GUI interface for the analytics dashboard.
+    User can choose to load real session data or generate demo data.
+    Displays the computed analytics results in a Tkinter window.
+    """
+    win = tk.Toplevel()
+    win.title("📊 Productivity Analytics Dashboard")
+    win.geometry("700x500")
+
+    text_box = tk.Text(win, wrap="word", height=25, width=80)
+    text_box.pack(pady=10)
+
+    def display_results(sessions: List[Dict[str, Any]], mode_label: str):
+        if not sessions:
+            messagebox.showinfo("No Data", "No session data available.")
+            return
+
+        streak = calculate_study_streak(sessions)
+        avg_work = average_work_duration(sessions)
+        common_hour = most_common_study_hour(sessions)
+        ranges = get_date_ranges()
+        today_total = total_focused_minutes_in_range(sessions, *ranges["today"])
+        week_total = total_focused_minutes_in_range(sessions, *ranges["this_week"])
+        all_time_total = sum(s["work_minutes"] for s in sessions)
+
+        plot_daily_focus(sessions)
+        plot_time_of_day_histogram(sessions)
+
+        text_box.delete("1.0", tk.END)
+        text_box.insert(tk.END, f"=== Study Companion - Productivity Analytics Dashboard ===\n")
+        text_box.insert(tk.END, f"Mode: {mode_label}\n\n")
+        text_box.insert(tk.END, f"--- Summary ---\n")
+        text_box.insert(tk.END, f"Study streak (longest consecutive days): {streak} day(s)\n")
+        text_box.insert(tk.END, f"Average focused minutes per session:     {avg_work:.1f} min\n")
+        if common_hour is not None:
+            text_box.insert(tk.END, f"Most common study start hour:           {common_hour}:00\n")
+        else:
+            text_box.insert(tk.END, f"Most common study start hour:           N/A\n")
+        text_box.insert(tk.END, f"\nTotal focused minutes (today):          {today_total} min\n")
+        text_box.insert(tk.END, f"Total focused minutes (this week):      {week_total} min\n")
+        text_box.insert(tk.END, f"Total focused minutes (all time):       {all_time_total} min\n")
+        text_box.insert(tk.END, f"\nCharts saved as: analytics_daily_focus.png and analytics_time_of_day.png\n")
+
+    btn_frame = tk.Frame(win)
+    btn_frame.pack(pady=10)
+
+    def run_real():
+        sessions = load_sessions()
+        if sessions:
+            display_results(sessions, "REAL DATA")
+        else:
+            messagebox.showinfo("No Data", "No sessions.csv found or empty.")
+
+    def run_demo():
+        demo_sessions = generate_demo_sessions()
+        display_results(demo_sessions, "DEMO DATA")
+
+    tk.Button(btn_frame, text="Use REAL Data", command=run_real).pack(side="left", padx=10)
+    tk.Button(btn_frame, text="Use DEMO Data", command=run_demo).pack(side="left", padx=10)
+
+    def return_to_main():
+        win.destroy()
+        if show_main_menu:
+            show_main_menu()
+
+    tk.Button(btn_frame, text="Return to Main Menu", command=return_to_main).pack(side="right", padx=10)
+
+# Entry point for CLI still works
+if __name__ == "__main__":
+    print("Study Companion - Productivity Analytics (Part III)")
+    print("1) Use REAL data from sessions.csv")
+    print("2) Use DEMO data (fake sessions for demonstration)")
+    choice = input("Choose 1 or 2 (default 1): ").strip()
+
+    if choice == "2":
+        demo_sessions = generate_demo_sessions()
+        run_analytics_dashboard(demo_sessions, mode_label="DEMO DATA")
+    else:
+        real_sessions = load_sessions()
+        if real_sessions:
+            run_analytics_dashboard(real_sessions, mode_label="REAL DATA")
