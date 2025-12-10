@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Dec  8 20:16:26 2025
 
-@author: hp
-"""
 
 import tkinter as tk
 from tkinter import messagebox
@@ -79,4 +75,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
