@@ -1,4 +1,3 @@
-# pomodoro.py
 from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
@@ -6,7 +5,8 @@ from typing import Optional
 import time
 import csv
 import os
-
+import tkinter as tk
+from tkinter import messagebox
 import matplotlib.pyplot as plt
 
 
@@ -66,7 +66,6 @@ def _run_interval(label: str, minutes: int, demo_mode: bool) -> int:
 
     print(f"\n--- {label} for {minutes} minute(s) ---")
 
-    # Print a few updates instead of every second
     step = max(total_seconds // 5, 1)
     last_print = total_seconds
 
@@ -231,7 +230,7 @@ def plot_session_pie(result: PomodoroResult, filename: str = "session_summary.pn
     print(f"Session summary pie chart saved to: {filename}")
 
 
-# ---------- Example + interactive CLI ----------
+# ---------- GUI Version ----------
 
 def run_example() -> None:
     """
@@ -240,59 +239,76 @@ def run_example() -> None:
     """
     config = PomodoroConfig(
         task_name="Example: Biochem exam review",
-        work_minutes=2,     # 2 logical minutes
-        break_minutes=1,    # 1 logical minute
+        work_minutes=2,
+        break_minutes=1,
         cycles=2,
-        demo_mode=True,     # runs very fast
+        demo_mode=True,
     )
     run_pomodoro(config)
 
 
-def run_interactive() -> None:
+def run_interactive(show_main_menu=None) -> None:
     """
-    Let the user configure a Pomodoro session in the terminal.
+    Let the user configure a Pomodoro session using a GUI.
     """
-    print("\nLet's configure your Pomodoro session.")
-
-    task = input("Task name (e.g., 'Problem set 3'): ").strip()
-    if not task:
-        task = "Unnamed task"
-
-    def get_int(prompt: str, default: int) -> int:
-        text = input(f"{prompt} (default {default}): ").strip()
-        if not text:
-            return default
+    def start_session():
+        task = task_entry.get() or "Unnamed task"
         try:
-            return int(text)
+            work = int(work_entry.get())
+            brk = int(break_entry.get())
+            cyc = int(cycles_entry.get())
         except ValueError:
-            print(f"Invalid number, using default {default}.")
-            return default
+            messagebox.showerror("Input Error", "Please enter valid numbers.")
+            return
 
-    work_minutes = get_int("Work minutes", 25)
-    break_minutes = get_int("Break minutes", 5)
-    cycles = get_int("Number of cycles", 4)
+        demo = demo_var.get()
+        config = PomodoroConfig(
+            task_name=task,
+            work_minutes=work,
+            break_minutes=brk,
+            cycles=cyc,
+            demo_mode=demo,
+        )
 
-    demo_text = input("Demo mode (accelerated)? (y/N): ").strip().lower()
-    demo_mode = demo_text == "y"
+        root.withdraw()  # Hide instead of destroying
+        run_pomodoro(config)
+        root.destroy()  # Only destroy after the session ends
 
-    config = PomodoroConfig(
-        task_name=task,
-        work_minutes=work_minutes,
-        break_minutes=break_minutes,
-        cycles=cycles,
-        demo_mode=demo_mode,
-    )
+        if show_main_menu:
+            show_main_menu()
 
-    run_pomodoro(config)
+    def return_to_main():
+        root.destroy()
+        if show_main_menu:
+            show_main_menu()
 
+    root = tk.Tk()
+    root.title("Pomodoro Timer Setup")
 
-if __name__ == "__main__":
-    print("Study Companion - Pomodoro Timer (Part II + visualization)")
-    print("1) Run quick example")
-    print("2) Configure my own session")
-    choice = input("Choose 1 or 2 (default 1): ").strip()
+    tk.Label(root, text="Task Name:").grid(row=0, column=0)
+    task_entry = tk.Entry(root, width=30)
+    task_entry.grid(row=0, column=1)
 
-    if choice == "2":
-        run_interactive()
-    else:
-        run_example()
+    tk.Label(root, text="Work Minutes:").grid(row=1, column=0)
+    work_entry = tk.Entry(root)
+    work_entry.insert(0, "25")
+    work_entry.grid(row=1, column=1)
+
+    tk.Label(root, text="Break Minutes:").grid(row=2, column=0)
+    break_entry = tk.Entry(root)
+    break_entry.insert(0, "5")
+    break_entry.grid(row=2, column=1)
+
+    tk.Label(root, text="Number of Cycles:").grid(row=3, column=0)
+    cycles_entry = tk.Entry(root)
+    cycles_entry.insert(0, "4")
+    cycles_entry.grid(row=3, column=1)
+
+    demo_var = tk.BooleanVar()
+    tk.Checkbutton(root, text="Demo Mode (Fast)", variable=demo_var).grid(row=4, columnspan=2)
+
+    tk.Button(root, text="Start Pomodoro Session", command=start_session).grid(row=5, columnspan=2, pady=10)
+    tk.Button(root, text="Return to Main Menu", command=return_to_main).grid(row=6, columnspan=2, pady=5)
+    tk.Button(root, text="Exit", command=root.destroy).grid(row=7, columnspan=2, pady=5)
+
+    root.mainloop()
