@@ -247,68 +247,95 @@ def run_example() -> None:
     run_pomodoro(config)
 
 
-def run_interactive(show_main_menu=None) -> None:
-    """
-    Let the user configure a Pomodoro session using a GUI.
-    """
-    def start_session():
-        task = task_entry.get() or "Unnamed task"
-        try:
-            work = int(work_entry.get())
-            brk = int(break_entry.get())
-            cyc = int(cycles_entry.get())
-        except ValueError:
-            messagebox.showerror("Input Error", "Please enter valid numbers.")
-            return
+def launch_pomodoro_session(config, show_main_menu):
+    timer_win = tk.Toplevel()
+    timer_win.title("Pomodoro Timer")
+    timer_win.geometry("400x300")
 
-        demo = demo_var.get()
-        config = PomodoroConfig(
-            task_name=task,
-            work_minutes=work,
-            break_minutes=brk,
-            cycles=cyc,
-            demo_mode=demo,
+    pet_label = tk.Label(timer_win, text="(=^･ω･^=)", font=("Courier", 20))
+    pet_label.pack(pady=10)
+
+    timer_label = tk.Label(timer_win, text="", font=("Helvetica", 24))
+    timer_label.pack(pady=10)
+
+    cycle_label = tk.Label(timer_win, text=f"Cycles Left: {config.cycles}", font=("Helvetica", 14))
+    cycle_label.pack(pady=5)
+
+    total_work = 0
+    total_break = 0
+    cycles_completed = 0
+    current_phase = "Work"
+    cycles_left = config.cycles
+    total_seconds = config.work_minutes * 60
+    started_at = datetime.now()
+
+    def update_timer():
+        nonlocal total_seconds, cycles_left, total_work, total_break, cycles_completed, current_phase
+
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        timer_label.config(text=f"{minutes:02d}:{seconds:02d}")
+
+        if total_seconds > 0:
+            total_seconds -= 1
+            timer_win.after(1000 if not config.demo_mode else 100, update_timer)
+        else:
+            if current_phase == "Work":
+                total_work += config.work_minutes * 60
+                current_phase = "Break"
+                if config.break_minutes > 0:
+                    messagebox.showinfo("Break Time!", "Take a short break.")
+                    total_seconds = config.break_minutes * 60
+                    update_timer()
+                else:
+                    current_phase = "Work"
+                    cycles_completed += 1
+                    cycles_left -= 1
+                    cycle_label.config(text=f"Cycles Left: {cycles_left}")
+                    if cycles_left > 0:
+                        total_seconds = config.work_minutes * 60
+                        update_timer()
+                    else:
+                        finish_session()
+            else:
+                total_break += config.break_minutes * 60
+                current_phase = "Work"
+                cycles_completed += 1
+                cycles_left -= 1
+                cycle_label.config(text=f"Cycles Left: {cycles_left}")
+                if cycles_left > 0:
+                    total_seconds = config.work_minutes * 60
+                    update_timer()
+                else:
+                    finish_session()
+
+    def finish_session():
+        finished_at = datetime.now()
+        result = PomodoroResult(
+            task_name=config.task_name,
+            cycles_completed=cycles_completed,
+            total_work_seconds=total_work,
+            total_break_seconds=total_break,
+            started_at=started_at,
+            finished_at=finished_at
         )
 
-        root.withdraw()  # Hide instead of destroying
-        run_pomodoro(config)
-        root.destroy()  # Only destroy after the session ends
+        append_to_log(result, "sessions.csv")
+        plot_session_pie(result)
 
+        messagebox.showinfo("Session Complete", f"Task '{config.task_name}' completed!\n\n"
+                                                 f"Work: {total_work // 60} min\n"
+                                                 f"Break: {total_break // 60} min")
+
+        timer_win.destroy()
         if show_main_menu:
             show_main_menu()
 
-    def return_to_main():
-        root.destroy()
-        if show_main_menu:
-            show_main_menu()
+    # Start timer
+    update_timer()
 
-    root = tk.Tk()
-    root.title("Pomodoro Timer Setup")
+    tk.Button(timer_win, text="Return to Main Menu",
+              command=lambda: [timer_win.destroy(), show_main_menu()]).pack(pady=20)
 
-    tk.Label(root, text="Task Name:").grid(row=0, column=0)
-    task_entry = tk.Entry(root, width=30)
-    task_entry.grid(row=0, column=1)
-
-    tk.Label(root, text="Work Minutes:").grid(row=1, column=0)
-    work_entry = tk.Entry(root)
-    work_entry.insert(0, "25")
-    work_entry.grid(row=1, column=1)
-
-    tk.Label(root, text="Break Minutes:").grid(row=2, column=0)
-    break_entry = tk.Entry(root)
-    break_entry.insert(0, "5")
-    break_entry.grid(row=2, column=1)
-
-    tk.Label(root, text="Number of Cycles:").grid(row=3, column=0)
-    cycles_entry = tk.Entry(root)
-    cycles_entry.insert(0, "4")
-    cycles_entry.grid(row=3, column=1)
-
-    demo_var = tk.BooleanVar()
-    tk.Checkbutton(root, text="Demo Mode (Fast)", variable=demo_var).grid(row=4, columnspan=2)
-
-    tk.Button(root, text="Start Pomodoro Session", command=start_session).grid(row=5, columnspan=2, pady=10)
-    tk.Button(root, text="Return to Main Menu", command=return_to_main).grid(row=6, columnspan=2, pady=5)
-    tk.Button(root, text="Exit", command=root.destroy).grid(row=7, columnspan=2, pady=5)
-
-    root.mainloop()
+    # Button to exit
+    tk.Button(timer_win, text="Return to Main Menu", command=lambda: [timer_win.destroy(), show_main_menu()]).pack(pady=20)
