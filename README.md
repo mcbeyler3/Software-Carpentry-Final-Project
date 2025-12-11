@@ -13,7 +13,7 @@ Built with Python and a GUI using tkinter, this tool brings together useful feat
    
 # How to Run
 - Make sure you have Python 3.10 installed (we used Anaconda, but any environment works).
-- Install required packages: matplotlib, pyperclip, and ics
+- Install required packages: matplotlib, pyperclip, Tkinter, and ics
 - Run study_companion.py to launch the app.
   
 # Code Structure 
